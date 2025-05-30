@@ -1,75 +1,384 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+'use client';
 
-import { HelloWave } from '@/components/HelloWave';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  SafeAreaView,
+  Image,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
+import { Connection, clusterApiUrl } from '@solana/web3.js';
+import { useLazorWallet } from '../../sdk/useLazorWallet';
+import { router } from 'expo-router';
 
-export default function HomeScreen() {
+export default function WalletScreen() {
+  const [solBalance] = useState(12.5847);
+
+  const { wallet, isConnected, disconnect } = useLazorWallet({
+    connection: new Connection(clusterApiUrl('devnet'), 'confirmed'),
+  });
+
+  const copyToClipboard = async () => {
+    if (wallet?.smartWallet) {
+      await Clipboard.setStringAsync(wallet.smartWallet);
+      // Custom success notification
+      Alert.alert(
+        '✅ Copied!',
+        'Wallet address copied to clipboard',
+        [{ text: 'OK', style: 'default' }],
+        {
+          cancelable: true,
+        }
+      );
+    }
+  };
+
+  const handleDisconnect = () => {
+    Alert.alert(
+      '🔌 Disconnect Wallet',
+      'Are you sure you want to disconnect your wallet?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Disconnect',
+          style: 'destructive',
+          onPress: () => {
+            disconnect();
+            Alert.alert(
+              '👋 Disconnected',
+              'Your wallet has been disconnected successfully'
+            );
+            router.push('/'); // Navigate to home or welcome screen
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeposit = () => {
+    Alert.alert(
+      '💰 Deposit Tokens',
+      'Send tokens to your wallet address to deposit them.',
+      [{ text: 'Got it', style: 'default' }]
+    );
+  };
+
+  const handleScanQR = () => {
+    Alert.alert(
+      '📱 QR Scanner',
+      'QR code scanner would be implemented here to scan wallet addresses.',
+      [{ text: 'OK', style: 'default' }]
+    );
+  };
+
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-6)}`;
+  };
+
+  if (!wallet) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Loading wallet...</Text>
+      </View>
+    );
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Header with Logo, Address and Disconnect */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Image
+              source={require('../../assets/images/logo.jpg')}
+              style={styles.headerLogo}
+            />
+            <Text style={styles.headerTitle}>Lazor Wallet</Text>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={styles.addressPill}
+              onPress={copyToClipboard}
+            >
+              <Text style={styles.addressPillText}>
+                {formatAddress(wallet.smartWallet)}
+              </Text>
+              <Ionicons name='copy-outline' size={16} color='#6366f1' />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.disconnectButton}
+              onPress={handleDisconnect}
+            >
+              <Ionicons name='power-outline' size={18} color='#ef4444' />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Balance Card */}
+        <View style={styles.balanceCard}>
+          <Text style={styles.balanceLabel}>SOL Balance</Text>
+          <Text style={styles.balanceAmount}>{solBalance.toFixed(4)} SOL</Text>
+          <Text style={styles.balanceUsd}>
+            ≈ ${(solBalance * 98.45).toFixed(2)} USD
+          </Text>
+        </View>
+
+        {/* Wallet Address */}
+        <View style={styles.addressCard}>
+          <Text style={styles.addressLabel}>Your Wallet Address</Text>
+          <View style={styles.addressContainer}>
+            <Text style={styles.addressText}>
+              {formatAddress(wallet.smartWallet)}
+            </Text>
+            <TouchableOpacity
+              onPress={copyToClipboard}
+              style={styles.copyButton}
+            >
+              <Ionicons name='copy-outline' size={20} color='#6366f1' />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity style={styles.actionButton} onPress={handleDeposit}>
+            <Ionicons name='add-circle-outline' size={24} color='#fff' />
+            <Text style={styles.actionButtonText}>Deposit Tokens</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.actionButton} onPress={handleScanQR}>
+            <Ionicons name='qr-code-outline' size={24} color='#fff' />
+            <Text style={styles.actionButtonText}>Scan QR Code</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Recent Transactions */}
+        <View style={styles.transactionsCard}>
+          <Text style={styles.transactionsTitle}>Recent Transactions</Text>
+          <View style={styles.transactionItem}>
+            <View style={styles.transactionIcon}>
+              <Ionicons name='arrow-up-outline' size={20} color='#ef4444' />
+            </View>
+            <View style={styles.transactionDetails}>
+              <Text style={styles.transactionType}>Sent SOL</Text>
+              <Text style={styles.transactionDate}>2 hours ago</Text>
+            </View>
+            <Text style={styles.transactionAmount}>-2.5 SOL</Text>
+          </View>
+
+          <View style={styles.transactionItem}>
+            <View style={styles.transactionIcon}>
+              <Ionicons name='arrow-down-outline' size={20} color='#10b981' />
+            </View>
+            <View style={styles.transactionDetails}>
+              <Text style={styles.transactionType}>Received SOL</Text>
+              <Text style={styles.transactionDate}>1 day ago</Text>
+            </View>
+            <Text style={styles.transactionAmount}>+5.0 SOL</Text>
+          </View>
+
+          <View style={styles.transactionItem}>
+            <View style={styles.transactionIcon}>
+              <Ionicons name='arrow-up-outline' size={20} color='#ef4444' />
+            </View>
+            <View style={styles.transactionDetails}>
+              <Text style={styles.transactionType}>Sent USDC</Text>
+              <Text style={styles.transactionDate}>3 days ago</Text>
+            </View>
+            <Text style={styles.transactionAmount}>-150.0 USDC</Text>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  container: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrollContent: {
+    padding: 16,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    paddingVertical: 8,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerLogo: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1e293b',
+  },
+  headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
   },
-  stepContainer: {
-    gap: 8,
+  addressPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  addressPillText: {
+    fontSize: 12,
+    color: '#64748b',
+    fontFamily: 'monospace',
+  },
+  disconnectButton: {
+    backgroundColor: '#fef2f2',
+    padding: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  balanceCard: {
+    backgroundColor: '#6366f1',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  balanceLabel: {
+    color: '#e0e7ff',
+    fontSize: 16,
     marginBottom: 8,
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  balanceAmount: {
+    color: '#fff',
+    fontSize: 32,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  balanceUsd: {
+    color: '#e0e7ff',
+    fontSize: 16,
+  },
+  addressCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  addressLabel: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 8,
+  },
+  addressContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  addressText: {
+    fontSize: 16,
+    fontFamily: 'monospace',
+    color: '#1e293b',
+  },
+  copyButton: {
+    padding: 8,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  actionButton: {
+    flex: 1,
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  transactionsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  transactionsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 16,
+  },
+  transactionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  transactionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f8fafc',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  transactionDetails: {
+    flex: 1,
+  },
+  transactionType: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1e293b',
+  },
+  transactionDate: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  transactionAmount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1e293b',
   },
 });
