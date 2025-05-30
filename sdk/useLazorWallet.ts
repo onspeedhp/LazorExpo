@@ -2,6 +2,7 @@
 
 import * as anchor from '@coral-xyz/anchor';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as bs58 from 'bs58';
 import { Buffer } from 'buffer';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
@@ -17,7 +18,6 @@ import {
   WalletInfo,
 } from './types';
 import { getBlockhash, signAndSendTxn } from './utils';
-import * as bs58 from 'bs58';
 
 interface UseLazorWalletOptions {
   connection: anchor.web3.Connection;
@@ -77,9 +77,8 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
           relayerUrl: paymasterUrl,
         });
 
-        console.log('Smart wallet creation txn result:', result);
         await lazorProgram.connection.confirmTransaction(
-          result.signature,
+          String(result.result.signature),
           'confirmed'
         );
 
@@ -93,20 +92,31 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
         }
 
         // transfer SOL to the smart wallet
-        const transferSolIns = anchor.web3.SystemProgram.transfer({
-          fromPubkey: payer,
-          toPubkey: new anchor.web3.PublicKey(smartWallet!),
-          lamports: anchor.web3.LAMPORTS_PER_SOL / 10, // 0.1 SOL
-        });
+        const airdropTxn = new anchor.web3.Transaction().add(
+          anchor.web3.SystemProgram.transfer({
+            fromPubkey: payer,
+            toPubkey: new anchor.web3.PublicKey(smartWallet!),
+            lamports: anchor.web3.LAMPORTS_PER_SOL / 10, // 0.1 SOL
+          })
+        );
 
         const payerKeypair = anchor.web3.Keypair.fromSecretKey(
           bs58.decode(process.env.EXPO_PUBLIC_PRIVATE_KEY!)
         );
+        airdropTxn.feePayer = payerKeypair.publicKey;
+        airdropTxn.recentBlockhash = (
+          await options.connection.getLatestBlockhash()
+        ).blockhash;
+        airdropTxn.sign(payerKeypair);
 
-        await anchor.web3.sendAndConfirmTransaction(
+        // Fix: pass an empty object as options to avoid undefined 'options' parameter
+        await anchor.web3.sendAndConfirmRawTransaction(
           options.connection,
-          new anchor.web3.Transaction().add(transferSolIns),
-          [payerKeypair]
+          airdropTxn.serialize(),
+          {
+            skipPreflight: true,
+            commitment: 'confirmed',
+          }
         );
       }
 
@@ -115,8 +125,6 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
         smartWallet: smartWallet.toBase58(),
         smartWalletAuthenticator: smartWalletAuthenticator.toBase58(),
       };
-
-      console.log('Updated wallet info:', updatedWallet);
 
       setWallet(updatedWallet);
       await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updatedWallet));

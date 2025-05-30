@@ -2,11 +2,10 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import {
-  clusterApiUrl,
   Connection,
   LAMPORTS_PER_SOL,
   PublicKey,
-  SystemProgram,
+  SystemProgram
 } from '@solana/web3.js';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
@@ -35,7 +34,10 @@ interface Token {
 export default function TransferScreen() {
   // Initialize wallet hook
   const { wallet, isConnected, signMessage } = useLazorWallet({
-    connection: new Connection(clusterApiUrl('devnet'), 'confirmed'),
+    connection: new Connection(
+      process.env.EXPO_PUBLIC_SOLANA_RPC_URL!,
+      'confirmed'
+    ),
   });
 
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
@@ -43,7 +45,10 @@ export default function TransferScreen() {
   useEffect(() => {
     if (!wallet?.smartWallet) return;
 
-    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    const connection = new Connection(
+      process.env.EXPO_PUBLIC_SOLANA_RPC_URL!,
+      'confirmed'
+    );
 
     const fetchBalance = async () => {
       try {

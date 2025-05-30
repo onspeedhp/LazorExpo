@@ -4,7 +4,12 @@ import * as constants from '../constants';
 import IDL from '../program_idl/lazorkit.json';
 import { Lazorkit } from '../program_types/lazorkit';
 import * as types from '../types';
-import { createSecp256r1Instruction, getBlockhash, hashSeeds, signAndSendTxn } from '../utils';
+import {
+  createSecp256r1Instruction,
+  getBlockhash,
+  hashSeeds,
+  signAndSendTxn,
+} from '../utils';
 import { DefaultRuleProgram } from './default_rule';
 // Polyfill for structuredClone if not available (for React Native/Expo)
 if (typeof globalThis.structuredClone !== 'function') {
@@ -148,12 +153,16 @@ export class LazorKitProgram {
       toPubkey: smartWallet,
       lamports: 10000000,
     });
-    const transactiondesposit = new anchor.web3.Transaction().add(depositSolIns)
+    const transactiondesposit = new anchor.web3.Transaction().add(
+      depositSolIns
+    );
     const blockhash = await getBlockhash();
     transactiondesposit.recentBlockhash = blockhash;
     transactiondesposit.feePayer = payer;
     const result = await signAndSendTxn({
-      base64EncodedTransaction: transactiondesposit.serialize({ verifySignatures: false, requireAllSignatures: false }).toString('base64'),
+      base64EncodedTransaction: transactiondesposit
+        .serialize({ verifySignatures: false, requireAllSignatures: false })
+        .toString('base64'),
       relayerUrl: 'https://lazorkit-paymaster.onrender.com',
     });
 
@@ -205,7 +214,7 @@ export class LazorKitProgram {
     cpiIns: anchor.web3.TransactionInstruction | null = null,
     payer: anchor.web3.PublicKey,
     smartWallet: anchor.web3.PublicKey,
-    executeAction: anchor.IdlTypes<Lazorkit>["action"] = types.ExecuteAction
+    executeAction: anchor.IdlTypes<Lazorkit>['action'] = types.ExecuteAction
       .ExecuteCpi,
     createNewAuthenticator: number[] | null = null,
     verifyInstructionIndex: number = 0
@@ -296,7 +305,6 @@ export class LazorKitProgram {
       .add(verifySignatureIx)
       .add(executeInstructionIx);
   }
-
 
   async getSmartWalletByPasskey(passkeyPubkey: number[]): Promise<{
     smartWallet: anchor.web3.PublicKey | null;
