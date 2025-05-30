@@ -1,6 +1,6 @@
 import * as anchor from '@coral-xyz/anchor';
-import { sha256 } from 'js-sha256';
 import { Buffer } from 'buffer';
+import { sha256 } from 'js-sha256';
 
 export function hashSeeds(
   passkey: number[],
@@ -227,4 +227,20 @@ export async function getFeePayer(): Promise<anchor.web3.PublicKey> {
   if (!feePayerStr) throw new Error('fee_payer not found in response');
 
   return new anchor.web3.PublicKey(feePayerStr);
+}
+
+export async function getBlockhash(): Promise<string> {
+  const responseBlockhash = await fetch('https://lazorkit-paymaster.onrender.com', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'getBlockhash',
+      params: [],
+    }),
+  });
+  const dataBlock = await responseBlockhash.json();
+  const blockhash = dataBlock.result.blockhash;
+  return blockhash;
 }
