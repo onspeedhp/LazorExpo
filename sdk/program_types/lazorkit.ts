@@ -1,3 +1,9 @@
+/**
+ * Program IDL in camelCase format in order to be used in JS/TS.
+ *
+ * Note that this is only a type helper and is not the actual IDL. The original
+ * IDL can be found at `target/idl/lazorkit.json`.
+ */
 export type Lazorkit = {
   "address": "3CFG1eVGpUVAxMeuFnNw7CbBA1GQ746eQDdMWPoFTAD8",
   "metadata": {
