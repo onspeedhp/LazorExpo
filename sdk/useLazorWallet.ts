@@ -1,12 +1,13 @@
 // File: sdk/useLazorWallet.ts
 
-import { useState, useEffect, useCallback } from 'react';
-import * as WebBrowser from 'expo-web-browser';
-import * as Linking from 'expo-linking';
-import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LazorKitProgram } from './prgram_class/lazorkit';
 import * as anchor from '@coral-xyz/anchor';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Buffer } from 'buffer';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
+import { useCallback, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
+import { LazorKitProgram } from './prgram_class/lazorkit';
 import {
   ConnectOptions,
   ExecuteAction,
@@ -15,8 +16,7 @@ import {
   SignResult,
   WalletInfo,
 } from './types';
-import { signAndSendTxn } from './utils';
-import { Buffer } from 'buffer';
+import { getBlockhash, signAndSendTxn } from './utils';
 
 interface UseLazorWalletOptions {
   connection: anchor.web3.Connection;
@@ -76,8 +76,9 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
           relayerUrl: paymasterUrl,
         });
 
+          
         console.log('Smart wallet creation txn result:', result);
-
+        await new Promise(resolve => setTimeout(resolve, 2000));
         ({ smartWallet, smartWalletAuthenticator } =
           await lazorProgram.getSmartWalletByPasskey(data.passkeyPubkey));
 
@@ -129,7 +130,7 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
       return {
         credentialId: parsed.searchParams.get('credentialId') || '',
         passkeyPubkey,
-        expo: parsed.searchParams.get('expo') || '',
+        expo: parsed.searchParams.get('expo') || '',  
         platform: parsed.searchParams.get('platform') || '',
         smartWallet: '',
         smartWalletAuthenticator: '',
@@ -201,7 +202,21 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
       executeAction: ExecuteActionType = ExecuteAction.ExecuteCpi,
       opts?: SignOptions
     ): Promise<SignResult | null> => {
-      if (!wallet) return null;
+      console.log('🔄 Starting signMessage flow...');
+      console.log('📋 Instruction:', instruction);
+      console.log('⚡ Execute Action:', executeAction);
+      
+      if (!wallet) {
+        console.error('❌ No wallet connected');
+        return null;
+      }
+
+      console.log('👛 Wallet info:', {
+        credentialId: wallet.credentialId,
+        smartWallet: wallet.smartWallet,
+        smartWalletAuthenticator: wallet.smartWalletAuthenticator,
+        passkeyPubkeyLength: wallet.passkeyPubkey.length,
+      });
 
       const redirectUrl = getRedirectUri();
       const message = 'Hello';
@@ -209,81 +224,182 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
         message
       )}&expo=my-web-app&redirect_url=${encodeURIComponent(redirectUrl)}`;
 
+      console.log('🔗 Sign URL:', signUrl);
+
       return new Promise(async (resolve) => {
         const handleSignRedirect = async (url: string) => {
           try {
+            console.log('📥 Received redirect URL:', url);
+            
             const parsed = new URL(url);
-            if (parsed.searchParams.get('success') !== 'true')
-              throw new Error('Sign failed');
+            console.log('🔍 Parsed URL params:', Object.fromEntries(parsed.searchParams.entries()));
+            
+            if (parsed.searchParams.get('success') !== 'true') {
+              throw new Error('Sign failed: success parameter is not true');
+            }
 
-            // TODO: Return message
+            const signatureParam = parsed.searchParams.get('signature');
+            const msg = parsed.searchParams.get('msg');
+            
+            console.log('✏️  Raw signature param:', signatureParam);
+            console.log('🔑 Raw msg param:', msg);
+            
+            if (!signatureParam) {
+              throw new Error('No signature received from signing service');
+            }
+            if (!msg) {
+              throw new Error('No msg received from signing service');
+            }
             const result: SignResult = {
-              signature: Buffer.from(
-                parsed.searchParams.get('signature') || '',
-                'base64'
-              ),
-              publicKeyHash: Buffer.from(
-                parsed.searchParams.get('publicKeyHash') || '',
-                'base64'
-              ),
+              signature: Buffer.from(signatureParam, 'base64'),
+              msg: Buffer.from(msg, 'base64'),
             };
 
+            console.log('✅ Parsed sign result:', {
+              signatureLength: result.signature.length,
+              msgLength: result.msg.length,
+            });
+
+            console.log('🏗️  Creating execute transaction...');
+            const transferSolIns = anchor.web3.SystemProgram.transfer({
+              fromPubkey: new anchor.web3.PublicKey(wallet.smartWallet),
+              toPubkey: new anchor.web3.PublicKey('G6me5vzarVctt78RYFvfUpusA2VLBXT7QndLcFQ4hKB'),
+              lamports: 4000000, // 0.004 SOL
+            });
+            const checkRule = await lazorProgram.defaultRuleProgram.checkRuleIns(
+              new anchor.web3.PublicKey(wallet.smartWallet),
+              new anchor.web3.PublicKey(wallet.smartWalletAuthenticator)
+            );
             const executeTxn = await lazorProgram.executeInstructionTxn(
               wallet.passkeyPubkey,
-              Buffer.from(message),
+              result.msg,
               result.signature,
-              null,
-              instruction,
+              checkRule,
+              transferSolIns,
               payer,
               new anchor.web3.PublicKey(wallet.smartWallet),
-              new anchor.web3.PublicKey(wallet.smartWalletAuthenticator),
-              executeAction
             );
 
+            const blockhash = await getBlockhash();
+            executeTxn.recentBlockhash = blockhash;
+            executeTxn.feePayer = payer;
+          
+
+            console.log('📤 Execute transaction created:', executeTxn);
+            console.log('📊 Transaction info:', {
+              instructionCount: executeTxn.instructions.length,
+              feePayer: executeTxn.feePayer?.toBase58(),
+              recentBlockhash: executeTxn.recentBlockhash,
+            });
+
+            const serializedTxn = executeTxn.serialize({
+              verifySignatures: false,
+              requireAllSignatures: false,
+            });
+
+            console.log('📦 Serialized transaction length:', serializedTxn.length);
+
+            console.log('🚀 Sending transaction via relayer...');
             const sendResult = await signAndSendTxn({
-              base64EncodedTransaction: executeTxn
-                .serialize({
-                  verifySignatures: false,
-                  requireAllSignatures: false,
-                })
-                .toString('base64'),
+              base64EncodedTransaction: serializedTxn.toString('base64'),
               relayerUrl: paymasterUrl,
             });
 
-            if (!sendResult) throw new Error('Transaction sending failed');
+            console.log('📋 Relayer response:', sendResult);
 
-            options?.onSignSuccess?.(result);
-            opts?.onSuccess?.(result);
-            resolve(result);
+            if (!sendResult) {
+              throw new Error('Transaction sending failed: no response from relayer');
+            }
+
+            if (sendResult.error) {
+              throw new Error(`Transaction failed: ${JSON.stringify(sendResult.error)}`);
+            }
+
+            // Simple transaction hash extraction
+            const txHash = sendResult.result || sendResult.signature || sendResult;
+            console.log('🎯 Transaction hash:', txHash);
+
+            // Check if transaction is confirmed
+            if (txHash && typeof txHash === 'string') {
+              console.log('🔍 Checking transaction confirmation...');
+              try {
+                const confirmation = await options.connection.getSignatureStatus(txHash);
+                console.log('📋 Transaction confirmation status:', confirmation);
+                
+                if (confirmation.value?.confirmationStatus === 'confirmed' || 
+                    confirmation.value?.confirmationStatus === 'finalized') {
+                  console.log('✅ Transaction confirmed!');
+                } else {
+                  console.log('⏳ Transaction still pending...');
+                  // Wait a bit and check again
+                  await new Promise(resolve => setTimeout(resolve, 2000));
+                  const recheck = await options.connection.getSignatureStatus(txHash);
+                  console.log('🔄 Recheck status:', recheck);
+                }
+              } catch (err) {
+                console.error('❌ Error checking confirmation:', err);
+              }
+            }
+
+            console.log('✅ Transaction completed successfully!');
+            
+            // Return result with transaction hash
+            const finalResult: SignResult = {
+              ...result,
+              txHash: txHash
+            };
+            
+            options?.onSignSuccess?.(finalResult);
+            opts?.onSuccess?.(finalResult);
+            resolve(finalResult);
           } catch (err) {
-            const error =
-              err instanceof Error ? err : new Error('Unknown error');
+            console.error('❌ Error in handleSignRedirect:', err);
+            console.error('📊 Error details:', {
+              message: err instanceof Error ? err.message : 'Unknown error',
+              stack: err instanceof Error ? err.stack : undefined,
+            });
+            
+            const error = err instanceof Error ? err : new Error('Unknown error');
             options?.onSignError?.(error);
             opts?.onFail?.(error);
             resolve(null);
           }
         };
 
-        if (Platform.OS === 'ios') {
-          const result = await WebBrowser.openAuthSessionAsync(
-            signUrl,
-            redirectUrl
-          );
-          if (result.type === 'success' && result.url) {
-            handleSignRedirect(result.url);
+        try {
+          if (Platform.OS === 'ios') {
+            console.log('📱 Opening auth session (iOS)...');
+            const result = await WebBrowser.openAuthSessionAsync(
+              signUrl,
+              redirectUrl
+            );
+            console.log('📱 Auth session result:', result);
+            
+            if (result.type === 'success' && result.url) {
+              handleSignRedirect(result.url);
+            } else {
+              console.log('⚠️ User cancelled or auth session failed:', result);
+              const error = new Error('User cancelled sign');
+              options?.onSignError?.(error);
+              opts?.onFail?.(error);
+              resolve(null);
+            }
           } else {
-            const error = new Error('User cancelled sign');
-            options?.onSignError?.(error);
-            opts?.onFail?.(error);
-            resolve(null);
+            console.log('🤖 Setting up URL listener (Android)...');
+            const sub = Linking.addEventListener('url', ({ url }) => {
+              console.log('📱 Received URL event:', url);
+              WebBrowser.dismissBrowser();
+              handleSignRedirect(url);
+              sub.remove();
+            });
+            await WebBrowser.openBrowserAsync(signUrl);
           }
-        } else {
-          const sub = Linking.addEventListener('url', ({ url }) => {
-            WebBrowser.dismissBrowser();
-            handleSignRedirect(url);
-            sub.remove();
-          });
-          await WebBrowser.openBrowserAsync(signUrl);
+        } catch (browserError) {
+          console.error('❌ Browser error:', browserError);
+          const error = browserError instanceof Error ? browserError : new Error('Browser error');
+          options?.onSignError?.(error);
+          opts?.onFail?.(error);
+          resolve(null);
         }
       });
     },
