@@ -1,18 +1,22 @@
 'use client';
 
+import { Ionicons } from '@expo/vector-icons';
+import { clusterApiUrl, Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from '@solana/web3.js';
+import * as Clipboard from 'expo-clipboard';
+import * as Linking from 'expo-linking';
 import { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  TextInput,
   Alert,
-  ScrollView,
-  SafeAreaView,
   Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { useLazorWallet } from '../../sdk/useLazorWallet';
 
 interface Token {
   symbol: string;
@@ -23,6 +27,11 @@ interface Token {
 }
 
 export default function TransferScreen() {
+  // Initialize wallet hook
+  const { wallet, isConnected, signMessage } = useLazorWallet({
+    connection: new Connection(clusterApiUrl('devnet'), 'confirmed'),
+  });
+
   const [fromToken, setFromToken] = useState<Token>({
     symbol: 'SOL',
     name: 'Solana',
@@ -34,6 +43,11 @@ export default function TransferScreen() {
   const [toAddress, setToAddress] = useState('');
   const [amount, setAmount] = useState('');
   const [showTokenDropdown, setShowTokenDropdown] = useState(false);
+  
+  // Transaction result states
+  const [showTransactionResult, setShowTransactionResult] = useState(false);
+  const [transactionHash, setTransactionHash] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const tokens: Token[] = [
     {
@@ -90,7 +104,54 @@ export default function TransferScreen() {
     setAmount(fromToken.balance.toString());
   };
 
-  const handleSend = () => {
+  // Helper function to copy transaction hash to clipboard
+  const copyTransactionHash = async () => {
+    if (transactionHash) {
+      await Clipboard.setStringAsync(transactionHash);
+      Alert.alert(
+        '✅ Copied!',
+        'Transaction hash copied to clipboard',
+        [{ text: 'OK', style: 'default' }]
+      );
+    }
+  };
+
+  // Helper function to open transaction in Solana Explorer
+  const viewInExplorer = () => {
+    if (transactionHash) {
+      const explorerUrl = `https://explorer.solana.com/tx/${transactionHash}?cluster=devnet`;
+      console.log('Opening explorer:', explorerUrl);
+      Linking.openURL(explorerUrl);
+    }
+  };
+
+  // Helper function to create transfer instruction
+  const createTransferInstruction = (toAddress: string, amount: number) => {
+    if (!wallet?.smartWallet) {
+      throw new Error('Wallet not connected');
+    }
+
+    const fromPubkey = new PublicKey(wallet.smartWallet);
+    const toPubkey = new PublicKey(toAddress);
+    const lamports = LAMPORTS_PER_SOL / 100;
+
+    return SystemProgram.transfer({
+      fromPubkey,
+      toPubkey,
+      lamports,
+    });
+  };
+
+  const handleSend = async () => {
+    if (!isConnected || !wallet) {
+      Alert.alert(
+        '⚠️ Wallet Not Connected',
+        'Please connect your wallet first.',
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
+
     if (!toAddress || !amount) {
       Alert.alert(
         '⚠️ Missing Information',
@@ -110,6 +171,18 @@ export default function TransferScreen() {
       return;
     }
 
+    // Validate Solana address
+    try {
+      new PublicKey(toAddress);
+    } catch (error) {
+      Alert.alert(
+        '❌ Invalid Address',
+        'Please enter a valid Solana wallet address.',
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
+
     Alert.alert(
       '🚀 Confirm Transaction',
       `Send ${amount} ${fromToken.symbol} to ${toAddress.slice(
@@ -121,12 +194,63 @@ export default function TransferScreen() {
         {
           text: 'Send',
           style: 'default',
-          onPress: () =>
-            Alert.alert(
-              '✅ Transaction Sent!',
-              `Your ${amount} ${fromToken.symbol} has been sent successfully.`,
-              [{ text: 'Done', style: 'default' }]
-            ),
+          onPress: async () => {
+            try {
+              // Show loading state
+              setIsLoading(true);
+
+              // Create transfer instruction
+              const transferInstruction = createTransferInstruction(toAddress, sendAmount);
+
+              // Sign message and execute transaction
+              const result = await signMessage(transferInstruction);
+
+              if (result) {
+                // Use real transaction hash from result - only if it exists
+                let txHash = result.txHash;
+                
+                // If txHash is an object, try to extract the actual hash
+                if (typeof txHash === 'object' && txHash !== null) {
+                  // Try common hash field names
+                  const hashObj = txHash as any;
+                  txHash = hashObj.signature || hashObj.hash || hashObj.result || hashObj.id || JSON.stringify(txHash);
+                }
+                
+                // Only proceed if we have a real transaction hash (not fallback)
+                if (typeof txHash === 'string' && txHash && !txHash.startsWith('fallback_') && !txHash.startsWith('mock_')) {
+                  console.log('🎯 Real transaction hash received:', txHash);
+                  setTransactionHash(txHash);
+                  setShowTransactionResult(true);
+                  
+                  // Reset form
+                  setToAddress('');
+                  setAmount('');
+                } else {
+                  console.log('⚠️ No valid transaction hash received:', txHash);
+                  Alert.alert(
+                    '⚠️ Transaction Status Unknown',
+                    'Transaction may have been processed but no valid hash was returned.',
+                    [{ text: 'OK', style: 'default' }]
+                  );
+                }
+              } else {
+                Alert.alert(
+                  '❌ Transaction Failed',
+                  'The transaction was cancelled or failed to process.',
+                  [{ text: 'OK', style: 'default' }]
+                );
+              }
+            } catch (error) {
+              console.error('Transaction error:', error);
+              Alert.alert(
+                '❌ Transaction Error',
+                error instanceof Error ? error.message : 'An unknown error occurred.',
+                [{ text: 'OK', style: 'default' }]
+              );
+            } finally {
+              setIsLoading(false);
+            }
+          },
         },
       ]
     );
@@ -236,6 +360,40 @@ export default function TransferScreen() {
           <Ionicons name='send-outline' size={20} color='#fff' />
           <Text style={styles.sendButtonText}>Send Transaction</Text>
         </TouchableOpacity>
+        
+        {/* Debug Test Button */}
+        {__DEV__ && (
+          <TouchableOpacity 
+            style={[styles.sendButton, { backgroundColor: '#ef4444', marginTop: 12 }]} 
+            onPress={() => {
+              console.log('🧪 Debug test - wallet state:', {
+                isConnected,
+                wallet: wallet ? {
+                  credentialId: wallet.credentialId,
+                  smartWallet: wallet.smartWallet,
+                  smartWalletAuthenticator: wallet.smartWalletAuthenticator,
+                  passkeyPubkeyLength: wallet.passkeyPubkey?.length
+                } : null
+              });
+              
+              if (wallet && toAddress && amount) {
+                try {
+                  const testInstruction = createTransferInstruction(toAddress, Number.parseFloat(amount));
+                  console.log('🧪 Test instruction created:', {
+                    programId: testInstruction.programId.toBase58(),
+                    keys: testInstruction.keys,
+                    dataLength: testInstruction.data.length
+                  });
+                } catch (error) {
+                  console.error('🧪 Test instruction failed:', error);
+                }
+              }
+            }}
+          >
+            <Ionicons name='bug-outline' size={20} color='#fff' />
+            <Text style={styles.sendButtonText}>Debug Test</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* Token Dropdown Modal */}
@@ -289,6 +447,62 @@ export default function TransferScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+      
+      {/* Loading Overlay */}
+      <Modal visible={isLoading} transparent animationType='fade'>
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContent}>
+            <Text style={styles.loadingText}>🔐 Signing Transaction...</Text>
+            <Text style={styles.loadingSubtext}>Please complete the signing process</Text>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Transaction Result Modal */}
+      <Modal visible={showTransactionResult} transparent animationType='slide'>
+        <View style={styles.modalOverlay}>
+          <View style={styles.resultModalContent}>
+            <View style={styles.resultHeader}>
+              <Text style={styles.resultTitle}>✅ Transaction Successful!</Text>
+              <TouchableOpacity onPress={() => setShowTransactionResult(false)}>
+                <Ionicons name='close-outline' size={24} color='#64748b' />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.resultBody}>
+              <Text style={styles.resultDescription}>
+                Your {amount} {fromToken.symbol} has been sent successfully.
+              </Text>
+              
+              <View style={styles.transactionHashContainer}>
+                <Text style={styles.hashLabel}>Transaction Hash:</Text>
+                <View style={styles.hashRow}>
+                  <Text style={styles.hashText} numberOfLines={1}>
+                    {String(transactionHash || 'No hash available')}
+                  </Text>
+                  <TouchableOpacity onPress={copyTransactionHash} style={styles.copyButton}>
+                    <Ionicons name='copy-outline' size={20} color='#6366f1' />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <View style={styles.resultActions}>
+                <TouchableOpacity style={styles.explorerButton} onPress={viewInExplorer}>
+                  <Ionicons name='open-outline' size={20} color='#6366f1' />
+                  <Text style={styles.explorerButtonText}>View in Explorer</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.doneButton} 
+                  onPress={() => setShowTransactionResult(false)}
+                >
+                  <Text style={styles.doneButtonText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
       </Modal>
@@ -524,5 +738,104 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingContent: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+    marginBottom: 12,
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: '#64748b',
+  },
+  resultModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '70%',
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  resultTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  resultBody: {
+    padding: 20,
+  },
+  resultDescription: {
+    fontSize: 14,
+    color: '#64748b',
+    marginBottom: 20,
+  },
+  transactionHashContainer: {
+    marginBottom: 20,
+  },
+  hashLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  hashRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  hashText: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1e293b',
+  },
+  copyButton: {
+    padding: 4,
+  },
+  resultActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  explorerButton: {
+    backgroundColor: '#6366f1',
+    padding: 12,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  explorerButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  doneButton: {
+    backgroundColor: '#6366f1',
+    padding: 12,
+    borderRadius: 6,
+  },
+  doneButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
