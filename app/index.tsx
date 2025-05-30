@@ -8,7 +8,7 @@ import { useLazorWallet } from '@/sdk/LazorWalletProvider';
 import { Ionicons } from '@expo/vector-icons';
 import { Buffer } from 'buffer';
 import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,

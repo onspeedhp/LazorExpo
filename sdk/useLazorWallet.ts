@@ -216,6 +216,7 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
             if (parsed.searchParams.get('success') !== 'true')
               throw new Error('Sign failed');
 
+            // TODO: Return message
             const result: SignResult = {
               signature: Buffer.from(
                 parsed.searchParams.get('signature') || '',
