@@ -30,7 +30,8 @@ export interface WalletInfo {
 
 export interface SignResult {
   signature: Buffer;
-  publicKeyHash: Buffer;
+  msg: Buffer;
+  txHash?: string;
 }
 
 export type ConnectOptions = {
