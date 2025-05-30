@@ -1,10 +1,16 @@
 'use client';
 
 import { Ionicons } from '@expo/vector-icons';
-import { clusterApiUrl, Connection, LAMPORTS_PER_SOL, PublicKey, SystemProgram } from '@solana/web3.js';
+import {
+  clusterApiUrl,
+  Connection,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  SystemProgram,
+} from '@solana/web3.js';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Modal,
@@ -32,10 +38,34 @@ export default function TransferScreen() {
     connection: new Connection(clusterApiUrl('devnet'), 'confirmed'),
   });
 
+  const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+
+  useEffect(() => {
+    if (!wallet?.smartWallet) return;
+
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+    const fetchBalance = async () => {
+      try {
+        const balance = await connection.getBalance(
+          new PublicKey(wallet.smartWallet)
+        );
+        setFromToken({ ...fromToken, balance: balance / LAMPORTS_PER_SOL });
+      } catch (error) {
+        console.error('Error fetching balance:', error);
+      }
+    };
+
+    fetchBalance();
+    const interval = setInterval(fetchBalance, 5000); // fetch every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [wallet, isLoadingBalance]);
+
   const [fromToken, setFromToken] = useState<Token>({
     symbol: 'SOL',
     name: 'Solana',
-    balance: 12.5847,
+    balance: 0.0,
     icon: 'logo-bitcoin',
     color: '#9945ff',
   });
@@ -43,7 +73,7 @@ export default function TransferScreen() {
   const [toAddress, setToAddress] = useState('');
   const [amount, setAmount] = useState('');
   const [showTokenDropdown, setShowTokenDropdown] = useState(false);
-  
+
   // Transaction result states
   const [showTransactionResult, setShowTransactionResult] = useState(false);
   const [transactionHash, setTransactionHash] = useState<string>('');
@@ -108,11 +138,9 @@ export default function TransferScreen() {
   const copyTransactionHash = async () => {
     if (transactionHash) {
       await Clipboard.setStringAsync(transactionHash);
-      Alert.alert(
-        '✅ Copied!',
-        'Transaction hash copied to clipboard',
-        [{ text: 'OK', style: 'default' }]
-      );
+      Alert.alert('✅ Copied!', 'Transaction hash copied to clipboard', [
+        { text: 'OK', style: 'default' },
+      ]);
     }
   };
 
@@ -200,7 +228,10 @@ export default function TransferScreen() {
               setIsLoading(true);
 
               // Create transfer instruction
-              const transferInstruction = createTransferInstruction(toAddress, sendAmount);
+              const transferInstruction = createTransferInstruction(
+                toAddress,
+                sendAmount
+              );
 
               // Sign message and execute transaction
               const result = await signMessage(transferInstruction);
@@ -208,20 +239,30 @@ export default function TransferScreen() {
               if (result) {
                 // Use real transaction hash from result - only if it exists
                 let txHash = result.txHash;
-                
+
                 // If txHash is an object, try to extract the actual hash
                 if (typeof txHash === 'object' && txHash !== null) {
                   // Try common hash field names
                   const hashObj = txHash as any;
-                  txHash = hashObj.signature || hashObj.hash || hashObj.result || hashObj.id || JSON.stringify(txHash);
+                  txHash =
+                    hashObj.signature ||
+                    hashObj.hash ||
+                    hashObj.result ||
+                    hashObj.id ||
+                    JSON.stringify(txHash);
                 }
-                
+
                 // Only proceed if we have a real transaction hash (not fallback)
-                if (typeof txHash === 'string' && txHash && !txHash.startsWith('fallback_') && !txHash.startsWith('mock_')) {
+                if (
+                  typeof txHash === 'string' &&
+                  txHash &&
+                  !txHash.startsWith('fallback_') &&
+                  !txHash.startsWith('mock_')
+                ) {
                   console.log('🎯 Real transaction hash received:', txHash);
                   setTransactionHash(txHash);
                   setShowTransactionResult(true);
-                  
+
                   // Reset form
                   setToAddress('');
                   setAmount('');
@@ -244,11 +285,14 @@ export default function TransferScreen() {
               console.error('Transaction error:', error);
               Alert.alert(
                 '❌ Transaction Error',
-                error instanceof Error ? error.message : 'An unknown error occurred.',
+                error instanceof Error
+                  ? error.message
+                  : 'An unknown error occurred.',
                 [{ text: 'OK', style: 'default' }]
               );
             } finally {
               setIsLoading(false);
+              setIsLoadingBalance(!isLoadingBalance); // Toggle loading state
             }
           },
         },
@@ -360,29 +404,37 @@ export default function TransferScreen() {
           <Ionicons name='send-outline' size={20} color='#fff' />
           <Text style={styles.sendButtonText}>Send Transaction</Text>
         </TouchableOpacity>
-        
+
         {/* Debug Test Button */}
         {__DEV__ && (
-          <TouchableOpacity 
-            style={[styles.sendButton, { backgroundColor: '#ef4444', marginTop: 12 }]} 
+          <TouchableOpacity
+            style={[
+              styles.sendButton,
+              { backgroundColor: '#ef4444', marginTop: 12 },
+            ]}
             onPress={() => {
               console.log('🧪 Debug test - wallet state:', {
                 isConnected,
-                wallet: wallet ? {
-                  credentialId: wallet.credentialId,
-                  smartWallet: wallet.smartWallet,
-                  smartWalletAuthenticator: wallet.smartWalletAuthenticator,
-                  passkeyPubkeyLength: wallet.passkeyPubkey?.length
-                } : null
+                wallet: wallet
+                  ? {
+                      credentialId: wallet.credentialId,
+                      smartWallet: wallet.smartWallet,
+                      smartWalletAuthenticator: wallet.smartWalletAuthenticator,
+                      passkeyPubkeyLength: wallet.passkeyPubkey?.length,
+                    }
+                  : null,
               });
-              
+
               if (wallet && toAddress && amount) {
                 try {
-                  const testInstruction = createTransferInstruction(toAddress, Number.parseFloat(amount));
+                  const testInstruction = createTransferInstruction(
+                    toAddress,
+                    Number.parseFloat(amount)
+                  );
                   console.log('🧪 Test instruction created:', {
                     programId: testInstruction.programId.toBase58(),
                     keys: testInstruction.keys,
-                    dataLength: testInstruction.data.length
+                    dataLength: testInstruction.data.length,
                   });
                 } catch (error) {
                   console.error('🧪 Test instruction failed:', error);
@@ -450,13 +502,15 @@ export default function TransferScreen() {
           </View>
         </View>
       </Modal>
-      
+
       {/* Loading Overlay */}
       <Modal visible={isLoading} transparent animationType='fade'>
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingContent}>
             <Text style={styles.loadingText}>🔐 Signing Transaction...</Text>
-            <Text style={styles.loadingSubtext}>Please complete the signing process</Text>
+            <Text style={styles.loadingSubtext}>
+              Please complete the signing process
+            </Text>
           </View>
         </View>
       </Modal>
@@ -471,32 +525,40 @@ export default function TransferScreen() {
                 <Ionicons name='close-outline' size={24} color='#64748b' />
               </TouchableOpacity>
             </View>
-            
+
             <View style={styles.resultBody}>
               <Text style={styles.resultDescription}>
                 Your {amount} {fromToken.symbol} has been sent successfully.
               </Text>
-              
+
               <View style={styles.transactionHashContainer}>
                 <Text style={styles.hashLabel}>Transaction Hash:</Text>
                 <View style={styles.hashRow}>
                   <Text style={styles.hashText} numberOfLines={1}>
                     {String(transactionHash || 'No hash available')}
                   </Text>
-                  <TouchableOpacity onPress={copyTransactionHash} style={styles.copyButton}>
+                  <TouchableOpacity
+                    onPress={copyTransactionHash}
+                    style={styles.copyButton}
+                  >
                     <Ionicons name='copy-outline' size={20} color='#6366f1' />
                   </TouchableOpacity>
                 </View>
               </View>
-              
+
               <View style={styles.resultActions}>
-                <TouchableOpacity style={styles.explorerButton} onPress={viewInExplorer}>
+                <TouchableOpacity
+                  style={styles.explorerButton}
+                  onPress={viewInExplorer}
+                >
                   <Ionicons name='open-outline' size={20} color='#6366f1' />
-                  <Text style={styles.explorerButtonText}>View in Explorer</Text>
+                  <Text style={styles.explorerButtonText}>
+                    View in Explorer
+                  </Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
-                  style={styles.doneButton} 
+
+                <TouchableOpacity
+                  style={styles.doneButton}
                   onPress={() => setShowTransactionResult(false)}
                 >
                   <Text style={styles.doneButtonText}>Done</Text>

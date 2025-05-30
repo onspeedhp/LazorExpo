@@ -1,28 +1,59 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  ScrollView,
-  SafeAreaView,
-  Image,
-} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  Connection,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  clusterApiUrl,
+} from '@solana/web3.js';
 import * as Clipboard from 'expo-clipboard';
-import { Connection, clusterApiUrl } from '@solana/web3.js';
-import { useLazorWallet } from '../../sdk/useLazorWallet';
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
+import {
+  Alert,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useLazorWallet } from '../../sdk/useLazorWallet';
 
 export default function WalletScreen() {
-  const [solBalance] = useState(12.5847);
+  const [solBalance, setSolBalance] = useState(0);
 
-  const { wallet, isConnected, disconnect } = useLazorWallet({
+  const { wallet, disconnect } = useLazorWallet({
     connection: new Connection(clusterApiUrl('devnet'), 'confirmed'),
   });
+
+  useEffect(() => {
+    if (!wallet?.smartWallet) return;
+
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+    const fetchBalance = async () => {
+      try {
+        const balance = await connection.getBalance(
+          new PublicKey(wallet.smartWallet)
+        );
+        console.log(wallet.smartWallet);
+
+        console.log(balance);
+
+        setSolBalance(balance / LAMPORTS_PER_SOL);
+      } catch (error) {
+        console.error('Error fetching balance:', error);
+      }
+    };
+
+    fetchBalance();
+    const interval = setInterval(fetchBalance, 5000); // fetch every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [wallet]);
 
   const copyToClipboard = async () => {
     if (wallet?.smartWallet) {

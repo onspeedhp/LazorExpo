@@ -17,6 +17,7 @@ import {
   WalletInfo,
 } from './types';
 import { getBlockhash, signAndSendTxn } from './utils';
+import * as bs58 from 'bs58';
 
 interface UseLazorWalletOptions {
   connection: anchor.web3.Connection;
@@ -76,12 +77,12 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
           relayerUrl: paymasterUrl,
         });
 
-          
         console.log('Smart wallet creation txn result:', result);
         await lazorProgram.connection.confirmTransaction(
           result.signature,
           'confirmed'
         );
+
         ({ smartWallet, smartWalletAuthenticator } =
           await lazorProgram.getSmartWalletByPasskey(data.passkeyPubkey));
 
@@ -90,6 +91,23 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
         if (!smartWallet || !smartWalletAuthenticator) {
           throw new Error('Failed to create smart wallet');
         }
+
+        // transfer SOL to the smart wallet
+        const transferSolIns = anchor.web3.SystemProgram.transfer({
+          fromPubkey: payer,
+          toPubkey: new anchor.web3.PublicKey(smartWallet!),
+          lamports: anchor.web3.LAMPORTS_PER_SOL / 10, // 0.1 SOL
+        });
+
+        const payerKeypair = anchor.web3.Keypair.fromSecretKey(
+          bs58.decode(process.env.EXPO_PUBLIC_PRIVATE_KEY!)
+        );
+
+        await anchor.web3.sendAndConfirmTransaction(
+          options.connection,
+          new anchor.web3.Transaction().add(transferSolIns),
+          [payerKeypair]
+        );
       }
 
       const updatedWallet = {
@@ -133,7 +151,7 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
       return {
         credentialId: parsed.searchParams.get('credentialId') || '',
         passkeyPubkey,
-        expo: parsed.searchParams.get('expo') || '',  
+        expo: parsed.searchParams.get('expo') || '',
         platform: parsed.searchParams.get('platform') || '',
         smartWallet: '',
         smartWalletAuthenticator: '',
@@ -208,7 +226,7 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
       console.log('🔄 Starting signMessage flow...');
       console.log('📋 Instruction:', instruction);
       console.log('⚡ Execute Action:', executeAction);
-      
+
       if (!wallet) {
         console.error('❌ No wallet connected');
         return null;
@@ -233,20 +251,23 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
         const handleSignRedirect = async (url: string) => {
           try {
             console.log('📥 Received redirect URL:', url);
-            
+
             const parsed = new URL(url);
-            console.log('🔍 Parsed URL params:', Object.fromEntries(parsed.searchParams.entries()));
-            
+            console.log(
+              '🔍 Parsed URL params:',
+              Object.fromEntries(parsed.searchParams.entries())
+            );
+
             if (parsed.searchParams.get('success') !== 'true') {
               throw new Error('Sign failed: success parameter is not true');
             }
 
             const signatureParam = parsed.searchParams.get('signature');
             const msg = parsed.searchParams.get('msg');
-            
+
             console.log('✏️  Raw signature param:', signatureParam);
             console.log('🔑 Raw msg param:', msg);
-            
+
             if (!signatureParam) {
               throw new Error('No signature received from signing service');
             }
@@ -264,29 +285,25 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
             });
 
             console.log('🏗️  Creating execute transaction...');
-            const transferSolIns = anchor.web3.SystemProgram.transfer({
-              fromPubkey: new anchor.web3.PublicKey(wallet.smartWallet),
-              toPubkey: new anchor.web3.PublicKey('G6me5vzarVctt78RYFvfUpusA2VLBXT7QndLcFQ4hKB'),
-              lamports: 400000000, // 0.004 SOL
-            });
-            const checkRule = await lazorProgram.defaultRuleProgram.checkRuleIns(
-              new anchor.web3.PublicKey(wallet.smartWallet),
-              new anchor.web3.PublicKey(wallet.smartWalletAuthenticator)
-            );
+
+            const checkRule =
+              await lazorProgram.defaultRuleProgram.checkRuleIns(
+                new anchor.web3.PublicKey(wallet.smartWallet),
+                new anchor.web3.PublicKey(wallet.smartWalletAuthenticator)
+              );
             const executeTxn = await lazorProgram.executeInstructionTxn(
               wallet.passkeyPubkey,
               result.msg,
               result.signature,
               checkRule,
-              transferSolIns,
+              instruction,
               payer,
-              new anchor.web3.PublicKey(wallet.smartWallet),
+              new anchor.web3.PublicKey(wallet.smartWallet)
             );
 
             const blockhash = await getBlockhash();
             executeTxn.recentBlockhash = blockhash;
             executeTxn.feePayer = payer;
-          
 
             console.log('📤 Execute transaction created:', executeTxn);
             console.log('📊 Transaction info:', {
@@ -300,7 +317,10 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
               requireAllSignatures: false,
             });
 
-            console.log('📦 Serialized transaction length:', serializedTxn.length);
+            console.log(
+              '📦 Serialized transaction length:',
+              serializedTxn.length
+            );
 
             console.log('🚀 Sending transaction via relayer...');
             const sendResult = await signAndSendTxn({
@@ -311,26 +331,38 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
             console.log('📋 Relayer response:', sendResult);
 
             if (!sendResult) {
-              throw new Error('Transaction sending failed: no response from relayer');
+              throw new Error(
+                'Transaction sending failed: no response from relayer'
+              );
             }
 
             if (sendResult.error) {
-              throw new Error(`Transaction failed: ${JSON.stringify(sendResult.error)}`);
+              throw new Error(
+                `Transaction failed: ${JSON.stringify(sendResult.error)}`
+              );
             }
 
             // Extract transaction hash from response - check multiple possible fields
-            const txHash = sendResult.result || sendResult.signature || sendResult.id || sendResult.txHash || `fallback_${Date.now()}`;
+            const txHash =
+              sendResult.result ||
+              sendResult.signature ||
+              sendResult.id ||
+              sendResult.txHash ||
+              `fallback_${Date.now()}`;
             console.log('🎯 Transaction hash:', txHash);
-            console.log('🔍 Full sendResult structure:', JSON.stringify(sendResult, null, 2));
+            console.log(
+              '🔍 Full sendResult structure:',
+              JSON.stringify(sendResult, null, 2)
+            );
 
             console.log('✅ Transaction completed successfully!');
-            
+
             // Return result with transaction hash
             const finalResult: SignResult = {
               ...result,
-              txHash: txHash
+              txHash: txHash,
             };
-            
+
             options?.onSignSuccess?.(finalResult);
             opts?.onSuccess?.(finalResult);
             resolve(finalResult);
@@ -340,8 +372,9 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
               message: err instanceof Error ? err.message : 'Unknown error',
               stack: err instanceof Error ? err.stack : undefined,
             });
-            
-            const error = err instanceof Error ? err : new Error('Unknown error');
+
+            const error =
+              err instanceof Error ? err : new Error('Unknown error');
             options?.onSignError?.(error);
             opts?.onFail?.(error);
             resolve(null);
@@ -356,7 +389,7 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
               redirectUrl
             );
             console.log('📱 Auth session result:', result);
-            
+
             if (result.type === 'success' && result.url) {
               handleSignRedirect(result.url);
             } else {
@@ -378,7 +411,10 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
           }
         } catch (browserError) {
           console.error('❌ Browser error:', browserError);
-          const error = browserError instanceof Error ? browserError : new Error('Browser error');
+          const error =
+            browserError instanceof Error
+              ? browserError
+              : new Error('Browser error');
           options?.onSignError?.(error);
           opts?.onFail?.(error);
           resolve(null);
