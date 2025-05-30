@@ -1,10 +1,4 @@
-/**
- * Program IDL in camelCase format in order to be used in JS/TS.
- *
- * Note that this is only a type helper and is not the actual IDL. The original
- * IDL can be found at `target/idl/lazorkit.json`.
- */
-export type Lazorkit = {
+{
   "address": "3CFG1eVGpUVAxMeuFnNw7CbBA1GQ746eQDdMWPoFTAD8",
   "metadata": {
     "name": "lazorkit",
@@ -17,7 +11,7 @@ export type Lazorkit = {
   ],
   "instructions": [
     {
-      "name": "createSmartWallet",
+      "name": "create_smart_wallet",
       "docs": [
         "Create a new smart wallet with passkey authentication"
       ],
@@ -38,7 +32,7 @@ export type Lazorkit = {
           "signer": true
         },
         {
-          "name": "smartWalletSeq",
+          "name": "smart_wallet_seq",
           "writable": true,
           "pda": {
             "seeds": [
@@ -67,7 +61,7 @@ export type Lazorkit = {
           }
         },
         {
-          "name": "whitelistRulePrograms",
+          "name": "whitelist_rule_programs",
           "pda": {
             "seeds": [
               {
@@ -102,7 +96,7 @@ export type Lazorkit = {
           }
         },
         {
-          "name": "smartWallet",
+          "name": "smart_wallet",
           "writable": true,
           "pda": {
             "seeds": [
@@ -126,13 +120,13 @@ export type Lazorkit = {
               {
                 "kind": "account",
                 "path": "smart_wallet_seq.seq",
-                "account": "smartWalletSeq"
+                "account": "SmartWalletSeq"
               }
             ]
           }
         },
         {
-          "name": "smartWalletConfig",
+          "name": "smart_wallet_config",
           "writable": true,
           "pda": {
             "seeds": [
@@ -162,13 +156,13 @@ export type Lazorkit = {
               },
               {
                 "kind": "account",
-                "path": "smartWallet"
+                "path": "smart_wallet"
               }
             ]
           }
         },
         {
-          "name": "smartWalletAuthenticator",
+          "name": "smart_wallet_authenticator",
           "writable": true,
           "pda": {
             "seeds": [
@@ -198,16 +192,16 @@ export type Lazorkit = {
           }
         },
         {
-          "name": "defaultRuleProgram"
+          "name": "default_rule_program"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "passkeyPubkey",
+          "name": "passkey_pubkey",
           "type": {
             "array": [
               "u8",
@@ -216,13 +210,13 @@ export type Lazorkit = {
           }
         },
         {
-          "name": "ruleData",
+          "name": "rule_data",
           "type": "bytes"
         }
       ]
     },
     {
-      "name": "executeInstruction",
+      "name": "execute_instruction",
       "docs": [
         "Execute an instruction with passkey authentication"
       ],
@@ -261,7 +255,7 @@ export type Lazorkit = {
           }
         },
         {
-          "name": "smartWallet",
+          "name": "smart_wallet",
           "writable": true,
           "pda": {
             "seeds": [
@@ -285,13 +279,13 @@ export type Lazorkit = {
               {
                 "kind": "account",
                 "path": "smart_wallet_config.id",
-                "account": "smartWalletConfig"
+                "account": "SmartWalletConfig"
               }
             ]
           }
         },
         {
-          "name": "smartWalletConfig",
+          "name": "smart_wallet_config",
           "writable": true,
           "pda": {
             "seeds": [
@@ -321,13 +315,13 @@ export type Lazorkit = {
               },
               {
                 "kind": "account",
-                "path": "smartWallet"
+                "path": "smart_wallet"
               }
             ]
           }
         },
         {
-          "name": "smartWalletAuthenticator",
+          "name": "smart_wallet_authenticator",
           "pda": {
             "seeds": [
               {
@@ -338,7 +332,7 @@ export type Lazorkit = {
           }
         },
         {
-          "name": "whitelistRulePrograms",
+          "name": "whitelist_rule_programs",
           "pda": {
             "seeds": [
               {
@@ -373,21 +367,21 @@ export type Lazorkit = {
           }
         },
         {
-          "name": "authenticatorProgram"
+          "name": "authenticator_program"
         },
         {
-          "name": "ixSysvar",
+          "name": "ix_sysvar",
           "address": "Sysvar1nstructions1111111111111111111111111"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "cpiProgram"
+          "name": "cpi_program"
         },
         {
-          "name": "newSmartWalletAuthenticator",
+          "name": "new_smart_wallet_authenticator",
           "writable": true,
           "optional": true,
           "pda": {
@@ -405,7 +399,7 @@ export type Lazorkit = {
           "name": "args",
           "type": {
             "defined": {
-              "name": "executeInstructionArgs"
+              "name": "ExecuteInstructionArgs"
             }
           }
         }
@@ -452,7 +446,7 @@ export type Lazorkit = {
           }
         },
         {
-          "name": "whitelistRulePrograms",
+          "name": "whitelist_rule_programs",
           "writable": true,
           "pda": {
             "seeds": [
@@ -488,7 +482,7 @@ export type Lazorkit = {
           }
         },
         {
-          "name": "smartWalletSeq",
+          "name": "smart_wallet_seq",
           "writable": true,
           "pda": {
             "seeds": [
@@ -517,17 +511,17 @@ export type Lazorkit = {
           }
         },
         {
-          "name": "defaultRuleProgram"
+          "name": "default_rule_program"
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "upsertWhitelistRulePrograms",
+      "name": "upsert_whitelist_rule_programs",
       "docs": [
         "Update the list of whitelisted rule programs"
       ],
@@ -548,7 +542,7 @@ export type Lazorkit = {
           "signer": true
         },
         {
-          "name": "whitelistRulePrograms",
+          "name": "whitelist_rule_programs",
           "writable": true,
           "pda": {
             "seeds": [
@@ -584,13 +578,13 @@ export type Lazorkit = {
           }
         },
         {
-          "name": "systemProgram",
+          "name": "system_program",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "programId",
+          "name": "program_id",
           "type": "pubkey"
         }
       ]
@@ -598,7 +592,7 @@ export type Lazorkit = {
   ],
   "accounts": [
     {
-      "name": "config",
+      "name": "Config",
       "discriminator": [
         155,
         12,
@@ -611,7 +605,7 @@ export type Lazorkit = {
       ]
     },
     {
-      "name": "smartWalletAuthenticator",
+      "name": "SmartWalletAuthenticator",
       "discriminator": [
         126,
         36,
@@ -624,7 +618,7 @@ export type Lazorkit = {
       ]
     },
     {
-      "name": "smartWalletConfig",
+      "name": "SmartWalletConfig",
       "discriminator": [
         138,
         211,
@@ -637,7 +631,7 @@ export type Lazorkit = {
       ]
     },
     {
-      "name": "smartWalletSeq",
+      "name": "SmartWalletSeq",
       "discriminator": [
         12,
         192,
@@ -650,7 +644,7 @@ export type Lazorkit = {
       ]
     },
     {
-      "name": "whitelistRulePrograms",
+      "name": "WhitelistRulePrograms",
       "discriminator": [
         234,
         147,
@@ -666,57 +660,57 @@ export type Lazorkit = {
   "errors": [
     {
       "code": 6000,
-      "name": "invalidPasskey",
+      "name": "InvalidPasskey",
       "msg": "Invalid passkey provided"
     },
     {
       "code": 6001,
-      "name": "invalidAuthenticator",
+      "name": "InvalidAuthenticator",
       "msg": "Invalid authenticator for smart wallet"
     },
     {
       "code": 6002,
-      "name": "invalidRuleProgram",
+      "name": "InvalidRuleProgram",
       "msg": "Invalid rule program for operation"
     },
     {
       "code": 6003,
-      "name": "invalidLengthForVerification",
+      "name": "InvalidLengthForVerification",
       "msg": "Invalid instruction length for signature verification"
     },
     {
       "code": 6004,
-      "name": "verifyHeaderMismatchError",
+      "name": "VerifyHeaderMismatchError",
       "msg": "Signature header verification failed"
     },
     {
       "code": 6005,
-      "name": "verifyDataMismatchError",
+      "name": "VerifyDataMismatchError",
       "msg": "Signature data verification failed"
     },
     {
       "code": 6006,
-      "name": "invalidBump",
+      "name": "InvalidBump",
       "msg": "Invalid bump seed provided"
     },
     {
       "code": 6007,
-      "name": "invalidAccountInput",
+      "name": "InvalidAccountInput",
       "msg": "Invalid or missing required account"
     },
     {
       "code": 6008,
-      "name": "insufficientFunds"
+      "name": "InsufficientFunds"
     },
     {
       "code": 6009,
-      "name": "invalidRuleInstruction",
+      "name": "InvalidRuleInstruction",
       "msg": "Invalid rule instruction provided"
     }
   ],
   "types": [
     {
-      "name": "action",
+      "name": "Action",
       "docs": [
         "Enum for supported actions in the instruction"
       ],
@@ -724,38 +718,38 @@ export type Lazorkit = {
         "kind": "enum",
         "variants": [
           {
-            "name": "executeCpi"
+            "name": "ExecuteCpi"
           },
           {
-            "name": "changeProgramRule"
+            "name": "ChangeProgramRule"
           },
           {
-            "name": "checkAuthenticator"
+            "name": "CheckAuthenticator"
           },
           {
-            "name": "callRuleProgram"
+            "name": "CallRuleProgram"
           }
         ]
       }
     },
     {
-      "name": "config",
+      "name": "Config",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "createSmartWalletFee",
+            "name": "create_smart_wallet_fee",
             "type": "u64"
           },
           {
-            "name": "defaultRuleProgram",
+            "name": "default_rule_program",
             "type": "pubkey"
           }
         ]
       }
     },
     {
-      "name": "cpiData",
+      "name": "CpiData",
       "docs": [
         "Data for a CPI call (instruction data and account slice)"
       ],
@@ -767,7 +761,7 @@ export type Lazorkit = {
             "type": "bytes"
           },
           {
-            "name": "startIndex",
+            "name": "start_index",
             "type": "u8"
           },
           {
@@ -778,7 +772,7 @@ export type Lazorkit = {
       }
     },
     {
-      "name": "executeInstructionArgs",
+      "name": "ExecuteInstructionArgs",
       "docs": [
         "Arguments for the execute_instruction entrypoint"
       ],
@@ -786,7 +780,7 @@ export type Lazorkit = {
         "kind": "struct",
         "fields": [
           {
-            "name": "passkeyPubkey",
+            "name": "passkey_pubkey",
             "type": {
               "array": [
                 "u8",
@@ -803,23 +797,23 @@ export type Lazorkit = {
             "type": "bytes"
           },
           {
-            "name": "verifyInstructionIndex",
+            "name": "verify_instruction_index",
             "type": "u8"
           },
           {
-            "name": "ruleData",
+            "name": "rule_data",
             "type": {
               "defined": {
-                "name": "cpiData"
+                "name": "CpiData"
               }
             }
           },
           {
-            "name": "cpiData",
+            "name": "cpi_data",
             "type": {
               "option": {
                 "defined": {
-                  "name": "cpiData"
+                  "name": "CpiData"
                 }
               }
             }
@@ -828,12 +822,12 @@ export type Lazorkit = {
             "name": "action",
             "type": {
               "defined": {
-                "name": "action"
+                "name": "Action"
               }
             }
           },
           {
-            "name": "createNewAuthenticator",
+            "name": "create_new_authenticator",
             "type": {
               "option": {
                 "array": [
@@ -847,7 +841,7 @@ export type Lazorkit = {
       }
     },
     {
-      "name": "smartWalletAuthenticator",
+      "name": "SmartWalletAuthenticator",
       "docs": [
         "Account that stores authentication data for a smart wallet"
       ],
@@ -855,7 +849,7 @@ export type Lazorkit = {
         "kind": "struct",
         "fields": [
           {
-            "name": "passkeyPubkey",
+            "name": "passkey_pubkey",
             "docs": [
               "The public key of the passkey that can authorize transactions"
             ],
@@ -867,7 +861,7 @@ export type Lazorkit = {
             }
           },
           {
-            "name": "smartWallet",
+            "name": "smart_wallet",
             "docs": [
               "The smart wallet this authenticator belongs to"
             ],
@@ -884,7 +878,7 @@ export type Lazorkit = {
       }
     },
     {
-      "name": "smartWalletConfig",
+      "name": "SmartWalletConfig",
       "docs": [
         "Data account for a smart wallet"
       ],
@@ -899,7 +893,7 @@ export type Lazorkit = {
             "type": "u64"
           },
           {
-            "name": "ruleProgram",
+            "name": "rule_program",
             "docs": [
               "Optional rule program that governs this wallet's operations"
             ],
@@ -916,7 +910,7 @@ export type Lazorkit = {
       }
     },
     {
-      "name": "smartWalletSeq",
+      "name": "SmartWalletSeq",
       "docs": [
         "Account that maintains the sequence number for smart wallet creation"
       ],
@@ -941,7 +935,7 @@ export type Lazorkit = {
       }
     },
     {
-      "name": "whitelistRulePrograms",
+      "name": "WhitelistRulePrograms",
       "docs": [
         "Account that stores whitelisted rule program addresses"
       ],
@@ -968,4 +962,4 @@ export type Lazorkit = {
       }
     }
   ]
-};
+}
