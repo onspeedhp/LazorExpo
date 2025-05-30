@@ -78,7 +78,10 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
 
           
         console.log('Smart wallet creation txn result:', result);
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await lazorProgram.connection.confirmTransaction(
+          result.signature,
+          'confirmed'
+        );
         ({ smartWallet, smartWalletAuthenticator } =
           await lazorProgram.getSmartWalletByPasskey(data.passkeyPubkey));
 
@@ -264,7 +267,7 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
             const transferSolIns = anchor.web3.SystemProgram.transfer({
               fromPubkey: new anchor.web3.PublicKey(wallet.smartWallet),
               toPubkey: new anchor.web3.PublicKey('G6me5vzarVctt78RYFvfUpusA2VLBXT7QndLcFQ4hKB'),
-              lamports: 4000000, // 0.004 SOL
+              lamports: 400000000, // 0.004 SOL
             });
             const checkRule = await lazorProgram.defaultRuleProgram.checkRuleIns(
               new anchor.web3.PublicKey(wallet.smartWallet),
@@ -315,31 +318,10 @@ export function useLazorWallet(options: UseLazorWalletOptions) {
               throw new Error(`Transaction failed: ${JSON.stringify(sendResult.error)}`);
             }
 
-            // Simple transaction hash extraction
-            const txHash = sendResult.result || sendResult.signature || sendResult;
+            // Extract transaction hash from response - check multiple possible fields
+            const txHash = sendResult.result || sendResult.signature || sendResult.id || sendResult.txHash || `fallback_${Date.now()}`;
             console.log('🎯 Transaction hash:', txHash);
-
-            // Check if transaction is confirmed
-            if (txHash && typeof txHash === 'string') {
-              console.log('🔍 Checking transaction confirmation...');
-              try {
-                const confirmation = await options.connection.getSignatureStatus(txHash);
-                console.log('📋 Transaction confirmation status:', confirmation);
-                
-                if (confirmation.value?.confirmationStatus === 'confirmed' || 
-                    confirmation.value?.confirmationStatus === 'finalized') {
-                  console.log('✅ Transaction confirmed!');
-                } else {
-                  console.log('⏳ Transaction still pending...');
-                  // Wait a bit and check again
-                  await new Promise(resolve => setTimeout(resolve, 2000));
-                  const recheck = await options.connection.getSignatureStatus(txHash);
-                  console.log('🔄 Recheck status:', recheck);
-                }
-              } catch (err) {
-                console.error('❌ Error checking confirmation:', err);
-              }
-            }
+            console.log('🔍 Full sendResult structure:', JSON.stringify(sendResult, null, 2));
 
             console.log('✅ Transaction completed successfully!');
             

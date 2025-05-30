@@ -1,9 +1,5 @@
 'use client';
 
-import {
-  LazorWalletProvider,
-  useSetLazorWalletCallbacks,
-} from '@/sdk/LazorWalletProvider';
 import { useLazorWallet } from '@/sdk/LazorWalletProvider';
 import { Ionicons } from '@expo/vector-icons';
 import { Buffer } from 'buffer';
@@ -34,7 +30,7 @@ Buffer.prototype.subarray = function subarray(
 export default function WelcomeScreen() {
   const [loading, setLoading] = useState<string | null>(null);
 
-  const { wallet, isConnected, connect, disconnect } = useLazorWallet();
+  const { wallet, isConnected, connect, disconnect , signMessage } = useLazorWallet();
 
   const handleConnect = async () => {
     setLoading('Connecting to wallet...');
