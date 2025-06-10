@@ -1,19 +1,28 @@
-import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+// import { useLazorWallet } from 'sdk';
+import { Tabs } from 'expo-router';
+
+function TabBarIcon(props: {
+  name: React.ComponentProps<typeof Ionicons>['name'];
+  color: string;
+}) {
+  return <Ionicons size={24} style={{ marginBottom: -3 }} {...props} />;
+}
 
 export default function TabLayout() {
+  // const { pubkey } = useLazorWallet();
+
+  // // If not connected, redirect to index
+  // if (!pubkey) {
+  //   return <Redirect href="/" />;
+  // }
+
   return (
     <Tabs
       screenOptions={{
+        headerShown: false,
         tabBarActiveTintColor: '#6366f1',
         tabBarInactiveTintColor: '#64748b',
-        headerStyle: {
-          backgroundColor: '#6366f1',
-        },
-        headerTintColor: '#fff',
-        headerTitleStyle: {
-          fontWeight: 'bold',
-        },
         tabBarStyle: {
           backgroundColor: '#fff',
           borderTopWidth: 1,
@@ -31,14 +40,16 @@ export default function TabLayout() {
       <Tabs.Screen
         name='index'
         options={{
-          title: 'Wallet',
-          headerShown: false, // Hide header since we have a custom one
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'wallet' : 'wallet-outline'}
-              size={24}
-              color={color}
-            />
+          title: 'Home',
+          tabBarIcon: ({ color }) => <TabBarIcon name='home' color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name='portfolio'
+        options={{
+          title: 'Portfolio',
+          tabBarIcon: ({ color }) => (
+            <TabBarIcon name='pie-chart' color={color} />
           ),
         }}
       />
@@ -46,25 +57,8 @@ export default function TabLayout() {
         name='transfer'
         options={{
           title: 'Transfer',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'send' : 'send-outline'}
-              size={24}
-              color={color}
-            />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name='portfolio'
-        options={{
-          title: 'Portfolio',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'analytics' : 'analytics-outline'}
-              size={24}
-              color={color}
-            />
+          tabBarIcon: ({ color }) => (
+            <TabBarIcon name='swap-horizontal' color={color} />
           ),
         }}
       />
@@ -72,12 +66,8 @@ export default function TabLayout() {
         name='settings'
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'settings' : 'settings-outline'}
-              size={24}
-              color={color}
-            />
+          tabBarIcon: ({ color }) => (
+            <TabBarIcon name='settings' color={color} />
           ),
         }}
       />

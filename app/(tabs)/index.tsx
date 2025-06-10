@@ -8,7 +8,6 @@ import {
   clusterApiUrl,
 } from '@solana/web3.js';
 import * as Clipboard from 'expo-clipboard';
-import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   Alert,
@@ -20,26 +19,22 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useLazorWallet } from '../../sdk/useLazorWallet';
+import { useLazorWallet } from '../../sdk';
 
 export default function WalletScreen() {
   const [solBalance, setSolBalance] = useState(0);
 
-  const { wallet, disconnect } = useLazorWallet({
-    connection: new Connection(clusterApiUrl('devnet'), 'confirmed'),
-  });
+  const { pubkey, disconnect } = useLazorWallet();
 
   useEffect(() => {
-    if (!wallet?.smartWallet) return;
+    if (!pubkey) return;
 
     const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
 
     const fetchBalance = async () => {
       try {
-        const balance = await connection.getBalance(
-          new PublicKey(wallet.smartWallet)
-        );
-        console.log(wallet.smartWallet);
+        const balance = await connection.getBalance(new PublicKey(pubkey));
+        console.log(pubkey);
 
         console.log(balance);
 
@@ -53,11 +48,11 @@ export default function WalletScreen() {
     const interval = setInterval(fetchBalance, 5000); // fetch every 5 seconds
 
     return () => clearInterval(interval);
-  }, [wallet]);
+  }, [pubkey]);
 
   const copyToClipboard = async () => {
-    if (wallet?.smartWallet) {
-      await Clipboard.setStringAsync(wallet.smartWallet);
+    if (pubkey) {
+      await Clipboard.setStringAsync(pubkey.toString());
       // Custom success notification
       Alert.alert(
         '✅ Copied!',
@@ -71,25 +66,7 @@ export default function WalletScreen() {
   };
 
   const handleDisconnect = () => {
-    Alert.alert(
-      '🔌 Disconnect Wallet',
-      'Are you sure you want to disconnect your wallet?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Disconnect',
-          style: 'destructive',
-          onPress: () => {
-            disconnect();
-            Alert.alert(
-              '👋 Disconnected',
-              'Your wallet has been disconnected successfully'
-            );
-            router.push('/'); // Navigate to home or welcome screen
-          },
-        },
-      ]
-    );
+    disconnect();
   };
 
   const handleDeposit = () => {
@@ -112,14 +89,6 @@ export default function WalletScreen() {
     return `${address.slice(0, 6)}...${address.slice(-6)}`;
   };
 
-  if (!wallet) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading wallet...</Text>
-      </View>
-    );
-  }
-
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -138,7 +107,7 @@ export default function WalletScreen() {
               onPress={copyToClipboard}
             >
               <Text style={styles.addressPillText}>
-                {formatAddress(wallet.smartWallet)}
+                {formatAddress(pubkey?.toString() || '')}
               </Text>
               <Ionicons name='copy-outline' size={16} color='#6366f1' />
             </TouchableOpacity>
@@ -165,7 +134,7 @@ export default function WalletScreen() {
           <Text style={styles.addressLabel}>Your Wallet Address</Text>
           <View style={styles.addressContainer}>
             <Text style={styles.addressText}>
-              {formatAddress(wallet.smartWallet)}
+              {formatAddress(pubkey?.toString() || '')}
             </Text>
             <TouchableOpacity
               onPress={copyToClipboard}

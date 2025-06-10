@@ -1,10 +1,9 @@
 'use client';
 
-import { useLazorWallet } from '@/sdk/LazorWalletProvider';
 import { Ionicons } from '@expo/vector-icons';
-import { Buffer } from 'buffer';
+import { useLazorWallet } from '../sdk';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,22 +14,15 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import 'react-native-get-random-values';
-global.Buffer = Buffer;
 
-Buffer.prototype.subarray = function subarray(
-  begin: number | undefined,
-  end: number | undefined
-) {
-  const result = Uint8Array.prototype.subarray.apply(this, [begin, end]);
-  Object.setPrototypeOf(result, Buffer.prototype); // Explicitly add the `Buffer` prototype (adds `readUIntLE`!)
-  return result;
-};
-
-export default function WelcomeScreen() {
+export default function Index() {
   const [loading, setLoading] = useState<string | null>(null);
+  const { pubkey, connect } = useLazorWallet();
 
-  const { wallet, isConnected, connect, disconnect , signMessage } = useLazorWallet();
+  // If wallet is connected, redirect to tabs
+  // if (pubkey) {
+  //   return <Redirect href="/(tabs)" />;
+  // }
 
   const handleConnect = async () => {
     setLoading('Connecting to wallet...');
@@ -38,19 +30,23 @@ export default function WelcomeScreen() {
       await connect();
       Alert.alert(
         'Connection Successful',
-        'You are now connected to your wallet'
+        'You are now connected to your wallet',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              router.replace('/(tabs)');
+            },
+          },
+        ]
       );
-
-      // wait 1 second before navigating
-      setTimeout(() => {
-        router.push('/(tabs)');
-      }, 1000);
     } catch (error) {
       Alert.alert('Connection Error', 'Failed to connect to wallet');
     }
     setLoading(null);
   };
 
+  // If not connected, show login screen
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>

@@ -5,7 +5,7 @@ import {
   Connection,
   LAMPORTS_PER_SOL,
   PublicKey,
-  SystemProgram
+  SystemProgram,
 } from '@solana/web3.js';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
@@ -21,7 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useLazorWallet } from '../../sdk/useLazorWallet';
+import { useLazorWallet } from '../../sdk';
 
 interface Token {
   symbol: string;
@@ -33,17 +33,12 @@ interface Token {
 
 export default function TransferScreen() {
   // Initialize wallet hook
-  const { wallet, isConnected, signMessage } = useLazorWallet({
-    connection: new Connection(
-      process.env.EXPO_PUBLIC_SOLANA_RPC_URL!,
-      'confirmed'
-    ),
-  });
+  const { pubkey, isConnected, signMessage } = useLazorWallet();
 
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
 
   useEffect(() => {
-    if (!wallet?.smartWallet) return;
+    if (!pubkey) return;
 
     const connection = new Connection(
       process.env.EXPO_PUBLIC_SOLANA_RPC_URL!,
@@ -52,9 +47,7 @@ export default function TransferScreen() {
 
     const fetchBalance = async () => {
       try {
-        const balance = await connection.getBalance(
-          new PublicKey(wallet.smartWallet)
-        );
+        const balance = await connection.getBalance(pubkey);
         setFromToken({ ...fromToken, balance: balance / LAMPORTS_PER_SOL });
       } catch (error) {
         console.error('Error fetching balance:', error);
@@ -65,7 +58,7 @@ export default function TransferScreen() {
     const interval = setInterval(fetchBalance, 5000); // fetch every 5 seconds
 
     return () => clearInterval(interval);
-  }, [wallet, isLoadingBalance]);
+  }, [pubkey, isLoadingBalance]);
 
   const [fromToken, setFromToken] = useState<Token>({
     symbol: 'SOL',
@@ -160,11 +153,11 @@ export default function TransferScreen() {
 
   // Helper function to create transfer instruction
   const createTransferInstruction = (toAddress: string, amount: number) => {
-    if (!wallet?.smartWallet) {
+    if (!pubkey) {
       throw new Error('Wallet not connected');
     }
 
-    const fromPubkey = new PublicKey(wallet.smartWallet);
+    const fromPubkey = new PublicKey(pubkey);
     const toPubkey = new PublicKey(toAddress);
     const lamports = LAMPORTS_PER_SOL / 100;
 
@@ -176,7 +169,7 @@ export default function TransferScreen() {
   };
 
   const handleSend = async () => {
-    if (!isConnected || !wallet) {
+    if (!isConnected || !pubkey) {
       Alert.alert(
         '⚠️ Wallet Not Connected',
         'Please connect your wallet first.',
@@ -239,53 +232,53 @@ export default function TransferScreen() {
               );
 
               // Sign message and execute transaction
-              const result = await signMessage(transferInstruction);
+              const result = await signMessage('transferInstruction');
 
-              if (result) {
-                // Use real transaction hash from result - only if it exists
-                let txHash = result.txHash;
+              // if (result) {
+              //   // Use real transaction hash from result - only if it exists
+              //   let txHash = result.txHash;
 
-                // If txHash is an object, try to extract the actual hash
-                if (typeof txHash === 'object' && txHash !== null) {
-                  // Try common hash field names
-                  const hashObj = txHash as any;
-                  txHash =
-                    hashObj.signature ||
-                    hashObj.hash ||
-                    hashObj.result ||
-                    hashObj.id ||
-                    JSON.stringify(txHash);
-                }
+              //   // If txHash is an object, try to extract the actual hash
+              //   if (typeof txHash === 'object' && txHash !== null) {
+              //     // Try common hash field names
+              //     const hashObj = txHash as any;
+              //     txHash =
+              //       hashObj.signature ||
+              //       hashObj.hash ||
+              //       hashObj.result ||
+              //       hashObj.id ||
+              //       JSON.stringify(txHash);
+              //   }
 
-                // Only proceed if we have a real transaction hash (not fallback)
-                if (
-                  typeof txHash === 'string' &&
-                  txHash &&
-                  !txHash.startsWith('fallback_') &&
-                  !txHash.startsWith('mock_')
-                ) {
-                  console.log('🎯 Real transaction hash received:', txHash);
-                  setTransactionHash(txHash);
-                  setShowTransactionResult(true);
+              //   // Only proceed if we have a real transaction hash (not fallback)
+              //   if (
+              //     typeof txHash === 'string' &&
+              //     txHash &&
+              //     !txHash.startsWith('fallback_') &&
+              //     !txHash.startsWith('mock_')
+              //   ) {
+              //     console.log('🎯 Real transaction hash received:', txHash);
+              //     setTransactionHash(txHash);
+              //     setShowTransactionResult(true);
 
-                  // Reset form
-                  setToAddress('');
-                  setAmount('');
-                } else {
-                  console.log('⚠️ No valid transaction hash received:', txHash);
-                  Alert.alert(
-                    '⚠️ Transaction Status Unknown',
-                    'Transaction may have been processed but no valid hash was returned.',
-                    [{ text: 'OK', style: 'default' }]
-                  );
-                }
-              } else {
-                Alert.alert(
-                  '❌ Transaction Failed',
-                  'The transaction was cancelled or failed to process.',
-                  [{ text: 'OK', style: 'default' }]
-                );
-              }
+              //     // Reset form
+              //     setToAddress('');
+              //     setAmount('');
+              //   } else {
+              //     console.log('⚠️ No valid transaction hash received:', txHash);
+              //     Alert.alert(
+              //       '⚠️ Transaction Status Unknown',
+              //       'Transaction may have been processed but no valid hash was returned.',
+              //       [{ text: 'OK', style: 'default' }]
+              //     );
+              //   }
+              // } else {
+              //   Alert.alert(
+              //     '❌ Transaction Failed',
+              //     'The transaction was cancelled or failed to process.',
+              //     [{ text: 'OK', style: 'default' }]
+              //   );
+              // }
             } catch (error) {
               console.error('Transaction error:', error);
               Alert.alert(
@@ -409,48 +402,6 @@ export default function TransferScreen() {
           <Ionicons name='send-outline' size={20} color='#fff' />
           <Text style={styles.sendButtonText}>Send Transaction</Text>
         </TouchableOpacity>
-
-        {/* Debug Test Button */}
-        {__DEV__ && (
-          <TouchableOpacity
-            style={[
-              styles.sendButton,
-              { backgroundColor: '#ef4444', marginTop: 12 },
-            ]}
-            onPress={() => {
-              console.log('🧪 Debug test - wallet state:', {
-                isConnected,
-                wallet: wallet
-                  ? {
-                      credentialId: wallet.credentialId,
-                      smartWallet: wallet.smartWallet,
-                      smartWalletAuthenticator: wallet.smartWalletAuthenticator,
-                      passkeyPubkeyLength: wallet.passkeyPubkey?.length,
-                    }
-                  : null,
-              });
-
-              if (wallet && toAddress && amount) {
-                try {
-                  const testInstruction = createTransferInstruction(
-                    toAddress,
-                    Number.parseFloat(amount)
-                  );
-                  console.log('🧪 Test instruction created:', {
-                    programId: testInstruction.programId.toBase58(),
-                    keys: testInstruction.keys,
-                    dataLength: testInstruction.data.length,
-                  });
-                } catch (error) {
-                  console.error('🧪 Test instruction failed:', error);
-                }
-              }
-            }}
-          >
-            <Ionicons name='bug-outline' size={20} color='#fff' />
-            <Text style={styles.sendButtonText}>Debug Test</Text>
-          </TouchableOpacity>
-        )}
       </ScrollView>
 
       {/* Token Dropdown Modal */}
