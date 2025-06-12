@@ -21,7 +21,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useLazorWallet } from '../../sdk';
+import { useLazorWallet } from '@lazorkit/wallet-mobile-adapter';
 
 interface Token {
   symbol: string;
@@ -33,12 +33,12 @@ interface Token {
 
 export default function TransferScreen() {
   // Initialize wallet hook
-  const { pubkey, isConnected, signMessage } = useLazorWallet();
+  const { smartWalletPubkey, isConnected, signMessage } = useLazorWallet();
 
   const [isLoadingBalance, setIsLoadingBalance] = useState(true);
 
   useEffect(() => {
-    if (!pubkey) return;
+    if (!smartWalletPubkey) return;
 
     const connection = new Connection(
       process.env.EXPO_PUBLIC_SOLANA_RPC_URL!,
@@ -47,7 +47,7 @@ export default function TransferScreen() {
 
     const fetchBalance = async () => {
       try {
-        const balance = await connection.getBalance(pubkey);
+        const balance = await connection.getBalance(smartWalletPubkey);
         setFromToken({ ...fromToken, balance: balance / LAMPORTS_PER_SOL });
       } catch (error) {
         console.error('Error fetching balance:', error);
@@ -58,7 +58,7 @@ export default function TransferScreen() {
     const interval = setInterval(fetchBalance, 5000); // fetch every 5 seconds
 
     return () => clearInterval(interval);
-  }, [pubkey, isLoadingBalance]);
+  }, [smartWalletPubkey, isLoadingBalance]);
 
   const [fromToken, setFromToken] = useState<Token>({
     symbol: 'SOL',
@@ -68,7 +68,9 @@ export default function TransferScreen() {
     color: '#9945ff',
   });
 
-  const [toAddress, setToAddress] = useState('');
+  const [toAddress, setToAddress] = useState(
+    'hij78MKbJSSs15qvkHWTDCtnmba2c1W4r1V22g5sD8w'
+  );
   const [amount, setAmount] = useState('');
   const [showTokenDropdown, setShowTokenDropdown] = useState(false);
 
@@ -153,11 +155,11 @@ export default function TransferScreen() {
 
   // Helper function to create transfer instruction
   const createTransferInstruction = (toAddress: string, amount: number) => {
-    if (!pubkey) {
+    if (!smartWalletPubkey) {
       throw new Error('Wallet not connected');
     }
 
-    const fromPubkey = new PublicKey(pubkey);
+    const fromPubkey = new PublicKey(smartWalletPubkey);
     const toPubkey = new PublicKey(toAddress);
     const lamports = LAMPORTS_PER_SOL / 100;
 
@@ -169,7 +171,7 @@ export default function TransferScreen() {
   };
 
   const handleSend = async () => {
-    if (!isConnected || !pubkey) {
+    if (!isConnected || !smartWalletPubkey) {
       Alert.alert(
         '⚠️ Wallet Not Connected',
         'Please connect your wallet first.',
@@ -232,53 +234,19 @@ export default function TransferScreen() {
               );
 
               // Sign message and execute transaction
-              const result = await signMessage('transferInstruction');
-
-              // if (result) {
-              //   // Use real transaction hash from result - only if it exists
-              //   let txHash = result.txHash;
-
-              //   // If txHash is an object, try to extract the actual hash
-              //   if (typeof txHash === 'object' && txHash !== null) {
-              //     // Try common hash field names
-              //     const hashObj = txHash as any;
-              //     txHash =
-              //       hashObj.signature ||
-              //       hashObj.hash ||
-              //       hashObj.result ||
-              //       hashObj.id ||
-              //       JSON.stringify(txHash);
-              //   }
-
-              //   // Only proceed if we have a real transaction hash (not fallback)
-              //   if (
-              //     typeof txHash === 'string' &&
-              //     txHash &&
-              //     !txHash.startsWith('fallback_') &&
-              //     !txHash.startsWith('mock_')
-              //   ) {
-              //     console.log('🎯 Real transaction hash received:', txHash);
-              //     setTransactionHash(txHash);
-              //     setShowTransactionResult(true);
-
-              //     // Reset form
-              //     setToAddress('');
-              //     setAmount('');
-              //   } else {
-              //     console.log('⚠️ No valid transaction hash received:', txHash);
-              //     Alert.alert(
-              //       '⚠️ Transaction Status Unknown',
-              //       'Transaction may have been processed but no valid hash was returned.',
-              //       [{ text: 'OK', style: 'default' }]
-              //     );
-              //   }
-              // } else {
-              //   Alert.alert(
-              //     '❌ Transaction Failed',
-              //     'The transaction was cancelled or failed to process.',
-              //     [{ text: 'OK', style: 'default' }]
-              //   );
-              // }
+              await signMessage(transferInstruction, {
+                onSuccess: (result) => {
+                  console.log('Transaction signed successfully:', result);
+                  setTransactionHash(result);
+                  setShowTransactionResult(true);
+                },
+                onFail: (error) => {
+                  throw new Error(
+                    `Failed to sign transaction: ${error.message}`
+                  );
+                },
+                redirectUrl: 'exp://localhost:8081',
+              });
             } catch (error) {
               console.error('Transaction error:', error);
               Alert.alert(

@@ -19,22 +19,27 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useLazorWallet } from '../../sdk';
+import { useLazorWallet } from '@lazorkit/wallet-mobile-adapter';
 
 export default function WalletScreen() {
   const [solBalance, setSolBalance] = useState(0);
 
-  const { pubkey, disconnect } = useLazorWallet();
+  const { smartWalletPubkey, disconnect } = useLazorWallet();
 
   useEffect(() => {
-    if (!pubkey) return;
+    if (!smartWalletPubkey) return;
 
-    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    const connection = new Connection(
+      process.env.EXPO_PUBLIC_SOLANA_RPC_URL!,
+      'confirmed'
+    );
 
     const fetchBalance = async () => {
       try {
-        const balance = await connection.getBalance(new PublicKey(pubkey));
-        console.log(pubkey);
+        const balance = await connection.getBalance(
+          new PublicKey(smartWalletPubkey)
+        );
+        console.log(smartWalletPubkey);
 
         console.log(balance);
 
@@ -48,11 +53,11 @@ export default function WalletScreen() {
     const interval = setInterval(fetchBalance, 5000); // fetch every 5 seconds
 
     return () => clearInterval(interval);
-  }, [pubkey]);
+  }, [smartWalletPubkey]);
 
   const copyToClipboard = async () => {
-    if (pubkey) {
-      await Clipboard.setStringAsync(pubkey.toString());
+    if (smartWalletPubkey) {
+      await Clipboard.setStringAsync(smartWalletPubkey.toString());
       // Custom success notification
       Alert.alert(
         '✅ Copied!',
@@ -107,7 +112,7 @@ export default function WalletScreen() {
               onPress={copyToClipboard}
             >
               <Text style={styles.addressPillText}>
-                {formatAddress(pubkey?.toString() || '')}
+                {formatAddress(smartWalletPubkey?.toString() || '')}
               </Text>
               <Ionicons name='copy-outline' size={16} color='#6366f1' />
             </TouchableOpacity>
@@ -134,7 +139,7 @@ export default function WalletScreen() {
           <Text style={styles.addressLabel}>Your Wallet Address</Text>
           <View style={styles.addressContainer}>
             <Text style={styles.addressText}>
-              {formatAddress(pubkey?.toString() || '')}
+              {formatAddress(smartWalletPubkey?.toString() || '')}
             </Text>
             <TouchableOpacity
               onPress={copyToClipboard}
