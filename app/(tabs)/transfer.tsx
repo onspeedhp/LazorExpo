@@ -161,12 +161,11 @@ export default function TransferScreen() {
 
     const fromPubkey = new PublicKey(smartWalletPubkey);
     const toPubkey = new PublicKey(toAddress);
-    const lamports = LAMPORTS_PER_SOL / 100;
 
     return SystemProgram.transfer({
       fromPubkey,
       toPubkey,
-      lamports,
+      lamports: amount * LAMPORTS_PER_SOL,
     });
   };
 
