@@ -7,6 +7,7 @@ export default function RootLayout() {
       rpcUrl={process.env.EXPO_PUBLIC_SOLANA_RPC_URL!}
       ipfsUrl='https://ipfs-backup-git-main-chauanhtuan185s-projects.vercel.app'
       paymasterUrl='https://lazorkit-paymaster.onrender.com'
+      isDebug={true}
     >
       <Stack>
         <Stack.Screen

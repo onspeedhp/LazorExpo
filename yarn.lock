@@ -1398,10 +1398,10 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
-"@lazorkit/wallet-mobile-adapter@1.2.70":
-  version "1.2.70"
-  resolved "https://registry.yarnpkg.com/@lazorkit/wallet-mobile-adapter/-/wallet-mobile-adapter-1.2.70.tgz#d2265a3be5d9f6c5aa657530988a82e574ae01f3"
-  integrity sha512-Jb69EdfSiJT1u641ksliLCNzMIFv2XhrtZnjaAM4OfvhxofvxveOtfE38/idqfbU729yexNO8BEUtfhPnNJX6Q==
+"@lazorkit/wallet-mobile-adapter@1.2.72":
+  version "1.2.72"
+  resolved "https://registry.yarnpkg.com/@lazorkit/wallet-mobile-adapter/-/wallet-mobile-adapter-1.2.72.tgz#954d47b3241bd3a01279157f57ec72b11522dd86"
+  integrity sha512-YGAW33VimWeGYCjgXKEVbWU3vZFc/PqbmVVm0BdiC7jJdaw3HtqRi+buWSnXftVFbAO0Oq2SXKEhSgLEyG5rbA==
   dependencies:
     "@coral-xyz/anchor" "0.31.1"
     "@react-native-async-storage/async-storage" "2.2.0"
