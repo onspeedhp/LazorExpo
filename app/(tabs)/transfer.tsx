@@ -1,27 +1,27 @@
 'use client';
 
 import { Ionicons } from '@expo/vector-icons';
+import { useLazorWallet } from '@lazorkit/wallet-mobile-adapter';
 import {
-  Connection,
-  LAMPORTS_PER_SOL,
-  PublicKey,
-  SystemProgram,
+    Connection,
+    LAMPORTS_PER_SOL,
+    PublicKey,
+    SystemProgram,
 } from '@solana/web3.js';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import { useEffect, useState } from 'react';
 import {
-  Alert,
-  Modal,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Modal,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { useLazorWallet } from '@lazorkit/wallet-mobile-adapter';
 
 interface Token {
   symbol: string;

@@ -1,11 +1,11 @@
-import { LazorKitWalletProvider } from '@lazorkit/wallet-mobile-adapter';
+import { LazorKitProvider } from '@lazorkit/wallet-mobile-adapter';
 import { Stack } from 'expo-router';
 
 export default function RootLayout() {
   return (
-    <LazorKitWalletProvider
+    <LazorKitProvider
       rpcUrl={process.env.EXPO_PUBLIC_SOLANA_RPC_URL!}
-      ipfsUrl='https://portal.lazor.sh'
+      ipfsUrl='https://ipfs-backup-git-main-chauanhtuan185s-projects.vercel.app'
       paymasterUrl='https://lazorkit-paymaster.onrender.com'
     >
       <Stack>
@@ -22,6 +22,6 @@ export default function RootLayout() {
           }}
         />
       </Stack>
-    </LazorKitWalletProvider>
+    </LazorKitProvider>
   );
 }
