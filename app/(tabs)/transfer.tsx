@@ -3,24 +3,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLazorWallet } from '@lazorkit/wallet-mobile-adapter';
 import {
-    Connection,
-    LAMPORTS_PER_SOL,
-    PublicKey,
-    SystemProgram,
+  Connection,
+  LAMPORTS_PER_SOL,
+  PublicKey,
+  SystemProgram,
 } from '@solana/web3.js';
 import * as Clipboard from 'expo-clipboard';
 import * as Linking from 'expo-linking';
 import { useEffect, useState } from 'react';
 import {
-    Alert,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 interface Token {
@@ -158,7 +158,7 @@ export default function TransferScreen() {
     if (!smartWalletPubkey) {
       throw new Error('Wallet not connected');
     }
-
+    
     const fromPubkey = new PublicKey(smartWalletPubkey);
     const toPubkey = new PublicKey(toAddress);
 
@@ -187,8 +187,9 @@ export default function TransferScreen() {
       );
       return;
     }
+    // 0,009 => 0.009
+    const sendAmount = Number.parseFloat(amount.replace(',', '.'));
 
-    const sendAmount = Number.parseFloat(amount);
     if (sendAmount > fromToken.balance) {
       Alert.alert(
         '❌ Insufficient Balance',
